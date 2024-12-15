@@ -23,7 +23,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   scis          UserOnSCI[]
-  properties    Property[]      @relation("UserProperties") 
+  properties    Property[]      @relation("UserProperties")
+  tenants       Tenant[]        // Ajouter la relation avec les locataires
   // Optional for WebAuthn support
   Authenticator Authenticator[]
  
@@ -159,6 +160,8 @@ model Tenant {
   updatedAt       DateTime  @updatedAt
 
   // Relations
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   properties      TenantsOnProperties[]
   documents       Document[]
 }

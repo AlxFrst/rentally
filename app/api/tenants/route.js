@@ -12,59 +12,50 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer les propriétés de l'utilisateur et de ses SCIs
-    const userProperties = await prisma.property.findMany({
+    // Récupérer tous les locataires accessibles par l'utilisateur
+    const tenants = await prisma.tenant.findMany({
       where: {
         OR: [
-          { userId: session.user.id },
+          // Locataires des propriétés de l'utilisateur
           {
-            sci: {
-              users: {
-                some: {
-                  userId: session.user.id
+            properties: {
+              some: {
+                property: {
+                  OR: [
+                    { userId: session.user.id },
+                    {
+                      sci: {
+                        users: {
+                          some: {
+                            userId: session.user.id
+                          }
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
-          }
+          },
+          // Locataires créés par l'utilisateur
+          { userId: session.user.id }
         ]
       },
-      select: { id: true }
-    });
-
-    const propertyIds = userProperties.map(prop => prop.id);
-
-    // Récupérer les locataires liés à ces propriétés
-    const tenants = await prisma.tenant.findMany({
-      where: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
         properties: {
-          some: {
-            propertyId: {
-              in: propertyIds
-            }
-          }
-        }
-      },
-      include: {
-        properties: {
+          where: {
+            active: true
+          },
           include: {
             property: {
               select: {
                 id: true,
-                address: true,
-                type: true,
-                sci: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                },
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
+                address: true
               }
             }
           }
@@ -111,7 +102,8 @@ export async function POST(request) {
         phone: data.phone,
         previousAddress: data.previousAddress || null,
         salary: data.salary || 0,
-        profession: data.occupation
+        profession: data.occupation,
+        userId: session.user.id
       },
       include: {
         properties: {
