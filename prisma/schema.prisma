@@ -22,6 +22,8 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  scis          UserOnSCI[]
+  properties    Property[]      @relation("UserProperties") 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
  
@@ -84,4 +86,139 @@ model Authenticator {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
  
   @@id([userId, credentialID])
+}
+
+// EasyRent Models
+model SCI {
+  id              String     @id @default(cuid())
+  name            String
+  address         String
+  sirenNumber     String     @unique
+  creationDate    DateTime
+  socialCapital   Float
+  mainContact     String
+  email           String
+  phone           String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  // Relations
+  properties      Property[]
+  documents       Document[]
+  associates      Associate[]
+  users           UserOnSCI[]
+}
+
+model Associate {
+  id              String    @id @default(cuid())
+  name            String
+  percentage      Float
+  sciId           String
+  sci             SCI       @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Property {
+  id              String    @id @default(cuid())
+  address         String
+  type            String    // apartment, house, commercial
+  surface         Float
+  rooms           Int
+  floor           Int?
+  buildYear       Int
+  hasElevator     Boolean   @default(false)
+  hasParking      Boolean   @default(false)
+  hasBasement     Boolean   @default(false)
+  heatingType     String
+  status          String    // occupied, vacant, under_renovation
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  userId          String?
+  user            User?     @relation("UserProperties", fields: [userId], references: [id], onDelete: Cascade)
+  sciId           String?
+  sci             SCI?      @relation(fields: [sciId], references: [id], onDelete: Cascade)
+  documents       Document[]
+  tenants         TenantsOnProperties[]
+  inspections     Inspection[]
+}
+
+model Tenant {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  birthDate       DateTime
+  email           String
+  phone           String
+  previousAddress String?
+  salary          Float
+  profession      String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  properties      TenantsOnProperties[]
+  documents       Document[]
+}
+
+model TenantsOnProperties {
+  tenantId        String
+  propertyId      String
+  startDate       DateTime
+  endDate         DateTime?
+  rentAmount      Float
+  depositAmount   Float
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  property        Property  @relation(fields: [propertyId], references: [id])
+
+  @@id([tenantId, propertyId, startDate])
+}
+
+model Document {
+  id              String    @id @default(cuid())
+  name            String
+  type            String    // lease, diagnosis, invoice, insurance, etc.
+  category        String    // sci, property, tenant
+  url             String
+  expiryDate      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  sciId           String?
+  sci             SCI?      @relation(fields: [sciId], references: [id])
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id])
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
+}
+
+model Inspection {
+  id              String    @id @default(cuid())
+  type            String    // entry, exit
+  date            DateTime
+  notes           String?
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model UserOnSCI {
+  userId          String
+  sciId           String
+  role            String    // owner, admin, reader
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id])
+  sci             SCI       @relation(fields: [sciId], references: [id])
+
+  @@id([userId, sciId])
 }
